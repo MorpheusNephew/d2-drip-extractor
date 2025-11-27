@@ -13,8 +13,18 @@ const handler = NextAuth({
           "X-API-Key": process.env.BUNGIE_API_KEY,
         },
       },
-      userinfo:
-        "https://www.bungie.net/platform/User/GetMembershipsForCurrentUser",
+      userinfo: {
+        url: "https://www.bungie.net/platform/User/GetMembershipsForCurrentUser",
+        async request(context) {
+          console.log({
+            access_token: !!context.tokens.access_token,
+            id_token: !!context.tokens.id_token,
+            scope: context.tokens.scope,
+          });
+
+          return {};
+        },
+      },
     }),
   ],
 });
