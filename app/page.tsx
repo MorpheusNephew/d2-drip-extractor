@@ -4,9 +4,9 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 const Auth = ({ status }: { status: string }) =>
   status === "authenticated" ? (
-    <button onClick={() => signIn("bungie")}>Log Out</button>
+    <button onClick={() => signOut()}>Log Out</button>
   ) : (
-    <button onClick={() => signOut()}>Log In</button>
+    <button onClick={() => signIn("bungie")}>Log In</button>
   );
 
 export default function Home() {
