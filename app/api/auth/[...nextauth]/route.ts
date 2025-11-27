@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import BungieProvider from "next-auth/providers/bungie";
 
 const handler = NextAuth({
+  debug: true,
   providers: [
     BungieProvider({
       clientId: process.env.BUNGIE_CLIENT_ID,
