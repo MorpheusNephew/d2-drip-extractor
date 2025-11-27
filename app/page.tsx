@@ -10,9 +10,12 @@ const Auth = ({ status }: { status: string }) =>
   );
 
 export default function Home() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
-  const statusMessage = status === "authenticated" ? "Logged In" : "Logged out";
+  const statusMessage =
+    status === "authenticated"
+      ? `Logged In (${session.user?.name})`
+      : "Logged out";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
