@@ -12,6 +12,8 @@ const handler = NextAuth({
           "X-API-Key": process.env.BUNGIE_API_KEY,
         },
       },
+      userinfo:
+        "https://www.bungie.net/platform/User/GetMembershipsForCurrentUser",
     }),
   ],
 });
