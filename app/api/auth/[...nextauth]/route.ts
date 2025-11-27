@@ -20,6 +20,7 @@ const handler = NextAuth({
             access_token: !!context.tokens.access_token,
             id_token: !!context.tokens.id_token,
             scope: context.tokens.scope,
+            provider: JSON.stringify(context.provider),
           });
 
           return {};
