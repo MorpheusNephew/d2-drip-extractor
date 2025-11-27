@@ -14,16 +14,17 @@ const handler = NextAuth({
         },
       },
       userinfo: {
-        url: "https://www.bungie.net/platform/User/GetMembershipsForCurrentUser",
-        async request(context) {
-          console.log({
-            access_token: !!context.tokens.access_token,
-            id_token: !!context.tokens.id_token,
-            scope: context.tokens.scope,
-            provider: JSON.stringify(context.provider),
-          });
+        async request({ tokens, provider }) {
+          const headers = new Headers(
+            provider.httpOptions?.headers as HeadersInit | undefined
+          );
 
-          return {};
+          headers.append("authorization", `Bearer ${tokens.access_token}`);
+
+          return await fetch(
+            "https://www.bungie.net/platform/User/GetMembershipsForCurrentUser",
+            { headers }
+          ).then(async (response) => await response.json());
         },
       },
     }),
