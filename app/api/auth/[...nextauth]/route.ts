@@ -6,6 +6,7 @@ const handler = NextAuth({
     BungieProvider({
       clientId: process.env.BUNGIE_CLIENT_ID,
       clientSecret: process.env.BUNGIE_SECRET,
+      authorization: { params: { scope: "" } },
       httpOptions: {
         headers: {
           "X-API-Key": process.env.BUNGIE_API_KEY,
