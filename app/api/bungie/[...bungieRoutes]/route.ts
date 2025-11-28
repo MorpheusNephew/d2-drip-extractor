@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   console.log({ bungieRequest });
 
-  const response = await client.get(bungieRequest);
+  const response = await client.get(bungieRequest, session.accessToken);
 
   const data = await response.json();
 

@@ -1,6 +1,6 @@
 const apiRoot = "https://www.bungi.net/Platform";
 
-export const get = async (path: string) => {
+export const get = async (path: string, accessToken: string) => {
   const url = `${apiRoot}${path}`;
 
   console.log({ url });
@@ -9,6 +9,7 @@ export const get = async (path: string) => {
     headers: {
       "Content-Type": "application/json",
       "X-API-Key": process.env.BUNGIE_API_KEY as string,
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 };
