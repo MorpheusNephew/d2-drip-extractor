@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import BungieProvider from "next-auth/providers/bungie";
 
-export const config = {
+export const authConfig = {
   providers: [
     BungieProvider({
       clientId: process.env.BUNGIE_CLIENT_ID,

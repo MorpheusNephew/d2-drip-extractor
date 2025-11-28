@@ -1,19 +1,10 @@
-import { NextRequest } from "next/server";
+import { authConfig } from "@/auth";
+import { getServerSession } from "next-auth";
 
-export async function GET(request: NextRequest) {
-  console.log(request.nextUrl.pathname);
+export async function GET() {
+  const stuff = await getServerSession(authConfig);
 
-  const sessionUrl = `https://${request.nextUrl.hostname}/api/auth/session`;
-
-  const res = await fetch(sessionUrl, {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  const data = await res.json();
-
-  console.log({ data: JSON.stringify(data) });
+  console.log({ user: stuff?.user, expires: stuff?.expires });
 
   return Response.json({ status: 200, message: "Hello" });
 }
