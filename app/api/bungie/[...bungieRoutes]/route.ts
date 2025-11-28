@@ -3,15 +3,7 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   console.log(request.nextUrl.pathname);
 
-  const res = await fetch("/api/auth/session", {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  const myJson = await res.json();
-
-  console.log({ myJson });
+  console.log({ url: `https://${request.nextUrl.hostname}/api/auth/session` });
 
   return Response.json({ status: 200, message: "Hello" });
 }
