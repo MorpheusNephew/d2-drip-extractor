@@ -8,7 +8,7 @@ export const get = async (path: string) => {
   return fetch(url, {
     headers: {
       "Content-Type": "application/json",
-      "X-API-KEY": process.env.BUNGIE_API_KEY as string,
+      "X-API-Key": process.env.BUNGIE_API_KEY as string,
     },
   });
 };
