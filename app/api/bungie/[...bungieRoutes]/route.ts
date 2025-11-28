@@ -12,9 +12,11 @@ export async function GET(request: NextRequest) {
 
   const bungieRequest = request.nextUrl.pathname.replace("api/bungie/", "");
 
-  console.log({ bungieRequest });
-
-  const response = await client.get(bungieRequest, session.accessToken);
+  const response = await client.get(
+    bungieRequest,
+    session.accessToken,
+    Object.fromEntries(request.nextUrl.searchParams)
+  );
 
   const data = await response.json();
 
