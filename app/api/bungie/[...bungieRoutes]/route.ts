@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
 
   const bungieRequest = request.nextUrl.pathname.replace("api/bungie/", "");
 
+  console.log({ bungieRequest });
+
   const response = await client.get(bungieRequest);
 
   const data = await response.json();
