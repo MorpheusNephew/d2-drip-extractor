@@ -1,16 +1,15 @@
 import type { NextAuthOptions } from "next-auth";
 import BungieProvider from "next-auth/providers/bungie";
-import { BUNGIE_CLIENT_ID, BUNGIE_SECRET, BUNGIE_API_KEY } from "./variables";
 
 export const authConfig = {
   providers: [
     BungieProvider({
-      clientId: BUNGIE_CLIENT_ID,
-      clientSecret: BUNGIE_SECRET,
+      clientId: process.env.BUNGIE_CLIENT_ID,
+      clientSecret: process.env.BUNGIE_SECRET,
       authorization: { params: { scope: "" } },
       httpOptions: {
         headers: {
-          "X-API-Key": BUNGIE_API_KEY,
+          "X-API-Key":process.env.BUNGIE_API_KEY,
         },
       },
       userinfo: {
