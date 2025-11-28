@@ -1,4 +1,4 @@
-const apiRoot = "https://www.bungi.net/Platform";
+const apiRoot = "https://www.bungie.net/Platform";
 
 export const get = async (path: string, accessToken: string) => {
   const url = `${apiRoot}${path}`;
