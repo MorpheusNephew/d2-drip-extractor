@@ -1,29 +1,11 @@
-"use client";
-
-import { signIn, signOut, useSession } from "next-auth/react";
-
-const Auth = ({ status }: { status: string }) =>
-  status === "authenticated" ? (
-    <button onClick={() => signOut()}>Log Out</button>
-  ) : (
-    <button onClick={() => signIn("bungie")}>Log In</button>
-  );
+import { Header } from "@/components";
 
 export default function Home() {
-  const { data: session, status } = useSession();
-
-  const statusMessage =
-    status === "authenticated"
-      ? `Logged In (${session.user?.name})`
-      : "Logged out";
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
         <div>
-          <header>
-            {statusMessage} - <Auth status={status} />
-          </header>
+          <Header />
           <h1>D2 Drip Extractor</h1>
           <p>
             Welcome to the D2 Drip Extractor! Here is where you can extract all
