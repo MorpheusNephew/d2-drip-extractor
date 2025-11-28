@@ -6,6 +6,8 @@ import * as client from "./client";
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authConfig);
 
+  console.log({ validSession: !!!session?.accessToken });
+
   if (!!!session?.accessToken) {
     return new NextResponse("Access Forbidden", { status: 403 });
   }
