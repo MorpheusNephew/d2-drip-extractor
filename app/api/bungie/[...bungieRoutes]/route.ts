@@ -1,10 +1,20 @@
 import { authConfig } from "@/auth";
 import { getServerSession } from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
+import * as client from "./client";
 
-export async function GET() {
-  const stuff = await getServerSession(authConfig);
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authConfig);
 
-  console.log({ user: stuff?.user, expires: stuff?.expires });
+  if (!!!session?.accessToken) {
+    return new NextResponse("Access Forbidden", { status: 403 });
+  }
 
-  return Response.json({ status: 200, message: "Hello" });
+  const bungieRequest = request.nextUrl.pathname.replace("api/bungie/", "");
+
+  const response = await client.get(bungieRequest);
+
+  const data = await response.json();
+
+  return NextResponse.json(data, { status: response.status });
 }
