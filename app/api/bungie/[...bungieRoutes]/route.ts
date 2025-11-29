@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authConfig);
 
   if (!!!session?.accessToken) {
-    return new NextResponse("Access Forbidden", { status: 403 });
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   const bungieRequest = request.nextUrl.pathname.replace("api/bungie/", "");
