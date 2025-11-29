@@ -8,6 +8,7 @@ import type {
 } from "bungie-api-ts/destiny2";
 
 import { loadManifestSlice, type ManifestSlice } from "./manifest";
+
 import { bungieClient } from "@/lib/bungie";
 
 // ---------------------------------------------------------------------------
@@ -26,9 +27,9 @@ export interface OwnedArmorOrnament {
   name: string;
   icon: string;
   classType: DestinyClass;
-  isUniversal: boolean;
-  appliesToItemHashes: number[];
-  appliesToItemNames: string[];
+  isUniversal: boolean; // true = transmog, false = armor-specific
+  appliesToItemHashes: number[]; // base armor items this ornament can apply to
+  appliesToItemNames: string[]; // human-readable armor names
 }
 
 export interface OrnamentsByClass {
@@ -40,7 +41,14 @@ export interface OrnamentsByClass {
 
 export interface OwnedCosmeticsResult {
   shaders: OwnedShader[];
+
+  // Universal armor ornaments (transmog) that are already unlocked
   universalOrnamentsByClass: OrnamentsByClass;
+
+  // Universal armor ornaments that exist in Collections but are NOT yet unlocked
+  wishlistUniversalOrnamentsByClass: OrnamentsByClass;
+
+  // Armor-specific ornaments that are unlocked (exotic / set-tied skins)
   armorSpecificOrnamentsByClass: OrnamentsByClass;
 }
 
@@ -61,8 +69,8 @@ async function fetchProfileWithCosmetics(opts: {
 }): Promise<DestinyProfileResponse> {
   const { accessToken, membershipType, destinyMembershipId } = opts;
 
-  // We only strictly need Profiles (100) + Collectibles (800) for
-  // ownership; include more components later if you want sockets, etc.
+  // Profiles + Collectibles is enough for ownership detection:
+  // 100 = Profiles, 800 = Collectibles
   const components = "100,800";
 
   const path = `/Destiny2/${membershipType}/Profile/${destinyMembershipId}/`;
@@ -97,9 +105,6 @@ function isArmorOrnamentDef(item: DestinyInventoryItemDefinition): boolean {
  * Uses the standard wording Bungie uses for universal ornaments in the
  * item description (e.g. "Once you get a universal ornament..." and
  * "eligible Legendary armor").
- *
- * If you inspect your manifest and see slightly different text, you can
- * add more substrings to this heuristic.
  */
 function isUniversalArmorOrnamentDef(
   item: DestinyInventoryItemDefinition
@@ -173,7 +178,6 @@ function buildOrnamentToArmorMap(
     const sockets = itemDef.sockets?.socketEntries ?? [];
     if (!sockets.length) continue;
 
-    // Optional armor filter – keeps things tidy and focused on armor sockets.
     const maybeName = itemDef.itemTypeDisplayName?.toLowerCase() ?? "";
     const isArmor =
       itemDef.itemType === 2 || // DestinyItemType.Armor
@@ -208,7 +212,7 @@ function buildOrnamentToArmorMap(
 }
 
 // ---------------------------------------------------------------------------
-// Main entry: loadOwnedCosmetics
+// Main entry: loadOwnedCosmetics (with wishlist)
 // ---------------------------------------------------------------------------
 
 export async function loadOwnedCosmetics(
@@ -242,6 +246,13 @@ export async function loadOwnedCosmetics(
     unknown: [],
   };
 
+  const wishlistUniversalOrnamentsByClass: OrnamentsByClass = {
+    hunter: [],
+    titan: [],
+    warlock: [],
+    unknown: [],
+  };
+
   const armorSpecificOrnamentsByClass: OrnamentsByClass = {
     hunter: [],
     titan: [],
@@ -251,8 +262,6 @@ export async function loadOwnedCosmetics(
 
   // 6) Walk collectibles and classify
   for (const [collectibleHash, state] of stateByCollectible.entries()) {
-    if (!isCollectibleAcquired(state)) continue;
-
     const collectibleDef = manifest.collectiblesByHash.get(collectibleHash);
     if (!collectibleDef) continue;
 
@@ -260,8 +269,12 @@ export async function loadOwnedCosmetics(
     const itemDef = manifest.inventoryItemsByHash.get(itemHash);
     if (!itemDef) continue;
 
-    // (a) Shaders
+    const acquired = isCollectibleAcquired(state);
+
+    // (a) Shaders (only care about owned)
     if (isShaderDef(itemDef)) {
+      if (!acquired) continue;
+
       shaders.push({
         itemHash,
         collectibleHash,
@@ -271,7 +284,7 @@ export async function loadOwnedCosmetics(
       continue;
     }
 
-    // (b) Armor ornaments (universal + armor-specific)
+    // (b) Armor ornaments (universal and armor-specific)
     if (!isArmorOrnamentDef(itemDef)) continue;
 
     const classType: DestinyClass =
@@ -313,15 +326,24 @@ export async function loadOwnedCosmetics(
         : "unknown";
 
     if (isUniversal) {
-      universalOrnamentsByClass[bucket].push(ornamentEntry);
+      // Universal ornaments: split into owned vs wishlist
+      if (acquired) {
+        universalOrnamentsByClass[bucket].push(ornamentEntry);
+      } else {
+        wishlistUniversalOrnamentsByClass[bucket].push(ornamentEntry);
+      }
     } else {
-      armorSpecificOrnamentsByClass[bucket].push(ornamentEntry);
+      // Armor-specific ornaments: only return owned ones (wishlist here is less useful)
+      if (acquired) {
+        armorSpecificOrnamentsByClass[bucket].push(ornamentEntry);
+      }
     }
   }
 
   return {
     shaders,
     universalOrnamentsByClass,
+    wishlistUniversalOrnamentsByClass,
     armorSpecificOrnamentsByClass,
   };
 }
