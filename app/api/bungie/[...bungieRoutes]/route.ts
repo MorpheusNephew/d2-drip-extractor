@@ -1,7 +1,7 @@
 import { authConfig } from "@/auth";
+import { bungieClient } from "@/lib/bungie";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-import * as client from "./client";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authConfig);
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   const bungieRequest = request.nextUrl.pathname.replace("api/bungie/", "");
 
-  const response = await client.get(
+  const response = await bungieClient.get(
     bungieRequest,
     session.accessToken,
     Object.fromEntries(request.nextUrl.searchParams)
