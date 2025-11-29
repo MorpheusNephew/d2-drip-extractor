@@ -12,15 +12,19 @@ export async function GET(request: NextRequest) {
 
   const bungieRequest = request.nextUrl.pathname.replace("api/bungie/", "");
 
-  const response = await bungieClient.get(
-    bungieRequest,
-    session.accessToken,
-    Object.fromEntries(request.nextUrl.searchParams)
-  );
+  try {
+    const response = await bungieClient.get(
+      bungieRequest,
+      session.accessToken,
+      Object.fromEntries(request.nextUrl.searchParams)
+    );
 
-  const data = await response.json();
+    return NextResponse.json(response);
+  } catch (err) {
+    console.error(`Error requesting ${bungieRequest}`, err);
 
-  return response.ok
-    ? NextResponse.json(data.Response, { status: response.status })
-    : NextResponse.json(data, { status: response.status });
+    return NextResponse.json(`Error requesting ${bungieRequest}`, {
+      status: 500,
+    });
+  }
 }
