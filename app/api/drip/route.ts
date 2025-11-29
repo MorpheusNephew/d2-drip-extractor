@@ -1,15 +1,45 @@
-import { authConfig } from "@/auth";
-import { getServerSession } from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
+// app/api/drip/route.ts
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+import { authConfig } from "@/auth"; // adjust if your auth helper is elsewhere
+import { loadOwnedCosmetics } from "@/lib/destiny/cosmetics";
+import { getServerSession } from "next-auth";
+
+export const dynamic = "force-dynamic"; // avoid caching per-user
+
+export async function GET() {
   const session = await getServerSession(authConfig);
 
-  console.log({ session });
-
-  if (!!!session?.accessToken) {
-    return new NextResponse("Forbidden", { status: 403 });
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json("Get your drip");
+  const accessToken = session.accessToken;
+  const destinyMembershipId = session.destinyMembershipId;
+  const destinyMembershipType = session.destinyMembershipType;
+
+  if (!accessToken || !destinyMembershipId || destinyMembershipType == null) {
+    return NextResponse.json(
+      { error: "Missing Bungie authentication data on session" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // 3) Load cosmetics from Bungie (shaders + ornaments)
+    const cosmetics = await loadOwnedCosmetics({
+      accessToken,
+      membershipType: destinyMembershipType,
+      destinyMembershipId,
+    });
+
+    // 4) Return as JSON
+    return NextResponse.json(cosmetics, { status: 200 });
+  } catch (err) {
+    console.error("[drip endpoint] Failed to load cosmetics", err);
+    return NextResponse.json(
+      { error: "Failed to load cosmetics from Bungie" },
+      { status: 500 }
+    );
+  }
 }
