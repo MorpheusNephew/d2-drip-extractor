@@ -9,7 +9,7 @@ export const authConfig = {
       authorization: { params: { scope: "" } },
       httpOptions: {
         headers: {
-          "X-API-Key":process.env.BUNGIE_API_KEY,
+          "X-API-Key": process.env.BUNGIE_API_KEY,
         },
       },
       userinfo: {
@@ -29,15 +29,33 @@ export const authConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ account, token }) {
+    async jwt({ account, token, profile }) {
       if (account) {
         token.accessToken = account.access_token;
+      }
+
+      if (profile) {
+        const { destinyMemberships } = profile.Response;
+
+        const destinyMembership = (
+          destinyMemberships.length > 1
+            ? destinyMemberships.filter(
+                (destinyMembership) =>
+                  destinyMembership.applicableMembershipTypes.length > 0
+              )
+            : [destinyMemberships[0]]
+        )[0];
+
+        token.destinyMembershipId = destinyMembership.membershipId;
+        token.destinyMembershipType = destinyMembership.membershipType;
       }
 
       return token;
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken;
+      session.destinyMembershipId = token.destinyMembershipId;
+      session.destinyMembershipType = token.destinyMembershipType;
 
       return session;
     },
