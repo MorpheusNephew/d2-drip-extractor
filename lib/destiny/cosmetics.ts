@@ -22,12 +22,21 @@ export interface OwnedShader {
   icon: string;
 }
 
+export type ArmorSlot =
+  | "helmet"
+  | "gauntlets"
+  | "chest"
+  | "legs"
+  | "classItem"
+  | "unknown";
+
 export interface OwnedArmorOrnament {
   itemHash: number;
   name: string;
   icon: string;
   classType: DestinyClass;
   isUniversal: boolean; // true = transmog, false = armor-specific
+  slot: ArmorSlot;
   appliesToItemHashes: number[]; // base armor items this ornament can apply to
   appliesToItemNames: string[]; // human-readable armor names
 }
@@ -37,6 +46,47 @@ export interface OrnamentsByClass {
   titan: OwnedArmorOrnament[];
   warlock: OwnedArmorOrnament[];
   unknown: OwnedArmorOrnament[];
+}
+
+export interface OwnedArmorItem {
+  itemHash: number;
+  collectibleHash: number;
+  name: string;
+  icon: string;
+  classType: DestinyClass;
+  slot: ArmorSlot;
+  tierType: number; // 1-6 (6 = Exotic)
+  isExotic: boolean;
+}
+
+export interface OwnedArmorByClass {
+  hunter: OwnedArmorItem[];
+  titan: OwnedArmorItem[];
+  warlock: OwnedArmorItem[];
+  unknown: OwnedArmorItem[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OwnedExoticArmor extends OwnedArmorItem {}
+
+export interface CharacterArmorSlot {
+  slot: ArmorSlot;
+  baseItemHash: number;
+  baseItemName: string;
+  icon: string;
+  classType: DestinyClass;
+  tierType: number;
+  isExotic: boolean;
+
+  // Ornaments available for this specific slot/item:
+  availableUniversalOrnaments: number[]; // itemHashes
+  availableArmorSpecificOrnaments: number[]; // itemHashes
+}
+
+export interface CharacterArmorDrip {
+  characterId: string;
+  classType: DestinyClass;
+  armorSlots: CharacterArmorSlot[];
 }
 
 export interface OwnedCosmeticsResult {
@@ -50,6 +100,15 @@ export interface OwnedCosmeticsResult {
 
   // Armor-specific ornaments that are unlocked (exotic / set-tied skins)
   armorSpecificOrnamentsByClass: OrnamentsByClass;
+
+  // All Legendary + Exotic armor unlocked in Collections
+  ownedArmorByClass: OwnedArmorByClass;
+
+  // All Exotic armor (subset of ownedArmorByClass)
+  ownedExoticArmor: OwnedExoticArmor[];
+
+  // Equipped armor per character, with per-slot ornament availability
+  characterArmorDrip: CharacterArmorDrip[];
 }
 
 export interface OwnedCosmeticsConfig {
@@ -69,9 +128,18 @@ async function fetchProfileWithCosmetics(opts: {
 }): Promise<DestinyProfileResponse> {
   const { accessToken, membershipType, destinyMembershipId } = opts;
 
-  // Profiles + Collectibles is enough for ownership detection:
-  // 100 = Profiles, 800 = Collectibles
-  const components = "100,800";
+  // Components:
+  // 100 = Profiles
+  // 102 = ProfileInventories (vault)
+  // 200 = Characters
+  // 201 = CharacterInventories
+  // 205 = CharacterEquipment
+  // 305 = ItemSockets
+  // 310 = ItemReusablePlugs
+  // 800 = Collectibles
+  // 1000 = ProfilePlugSets
+  // 1001 = CharacterPlugSets
+  const components = "100,102,200,201,205,305,310,800,1000,1001";
 
   const path = `/Destiny2/${membershipType}/Profile/${destinyMembershipId}/`;
   return bungieClient.get<DestinyProfileResponse>(path, accessToken, {
@@ -101,10 +169,7 @@ function isArmorOrnamentDef(item: DestinyInventoryItemDefinition): boolean {
 
 /**
  * Universal armor ornament (Transmog) detection.
- *
- * Uses the standard wording Bungie uses for universal ornaments in the
- * item description (e.g. "Once you get a universal ornament..." and
- * "eligible Legendary armor").
+ * Uses the standard wording Bungie uses for universal ornaments.
  */
 function isUniversalArmorOrnamentDef(
   item: DestinyInventoryItemDefinition
@@ -119,6 +184,101 @@ function isUniversalArmorOrnamentDef(
     desc.includes("eligible legendary armor") ||
     desc.includes("eligible legendary")
   );
+}
+
+/**
+ * Is this an armor item (not an ornament, not a weapon).
+ */
+function isArmorDef(item: DestinyInventoryItemDefinition): boolean {
+  if (item.itemType === 2) return true; // DestinyItemType.Armor
+
+  const name = item.itemTypeDisplayName?.toLowerCase() ?? "";
+  return (
+    name.includes("helmet") ||
+    name.includes("helm") ||
+    name.includes("hood") ||
+    name.includes("cowl") ||
+    name.includes("mask") ||
+    name.includes("gauntlet") ||
+    name.includes("gloves") ||
+    name.includes("grips") ||
+    name.includes("vambraces") ||
+    name.includes("arms") ||
+    name.includes("chest") ||
+    name.includes("plate") ||
+    name.includes("vest") ||
+    name.includes("robe") ||
+    name.includes("coat") ||
+    name.includes("legs") ||
+    name.includes("greaves") ||
+    name.includes("boots") ||
+    name.includes("strides") ||
+    name.includes("pants") ||
+    name.includes("slacks") ||
+    name.includes("bond") ||
+    name.includes("mark") ||
+    name.includes("cloak")
+  );
+}
+
+/**
+ * Roughly infer armor slot from type display name.
+ * You can refine using bucketTypeHash if you later load BucketDefinitions.
+ */
+function getArmorSlotFromName(item: DestinyInventoryItemDefinition): ArmorSlot {
+  const name = item.itemTypeDisplayName?.toLowerCase() ?? "";
+
+  if (
+    name.includes("helmet") ||
+    name.includes("helm") ||
+    name.includes("hood") ||
+    name.includes("mask") ||
+    name.includes("cowl")
+  ) {
+    return "helmet";
+  }
+
+  if (
+    name.includes("gauntlet") ||
+    name.includes("gloves") ||
+    name.includes("grips") ||
+    name.includes("vambrace") ||
+    name.includes("arms")
+  ) {
+    return "gauntlets";
+  }
+
+  if (
+    name.includes("chest") ||
+    name.includes("plate") ||
+    name.includes("vest") ||
+    name.includes("robe") ||
+    name.includes("coat") ||
+    name.includes("cuirass")
+  ) {
+    return "chest";
+  }
+
+  if (
+    name.includes("legs") ||
+    name.includes("greaves") ||
+    name.includes("boots") ||
+    name.includes("strides") ||
+    name.includes("pants") ||
+    name.includes("slacks")
+  ) {
+    return "legs";
+  }
+
+  if (
+    name.includes("bond") ||
+    name.includes("mark") ||
+    name.includes("cloak")
+  ) {
+    return "classItem";
+  }
+
+  return "unknown";
 }
 
 /**
@@ -180,7 +340,7 @@ function buildOrnamentToArmorMap(
 
     const maybeName = itemDef.itemTypeDisplayName?.toLowerCase() ?? "";
     const isArmor =
-      itemDef.itemType === 2 || // DestinyItemType.Armor
+      itemDef.itemType === 2 ||
       maybeName.includes("helmet") ||
       maybeName.includes("gauntlet") ||
       maybeName.includes("greaves") ||
@@ -211,8 +371,27 @@ function buildOrnamentToArmorMap(
   return map;
 }
 
+// Helper to map DestinyClass to our class-key
+function classKey(
+  classType: DestinyClass
+): keyof OrnamentsByClass & keyof OwnedArmorByClass {
+  switch (classType) {
+    // @ts-expect-error IsolatedModules
+    case DestinyClass.Titan:
+      return "titan";
+    // @ts-expect-error IsolatedModules
+    case DestinyClass.Hunter:
+      return "hunter";
+    // @ts-expect-error IsolatedModules
+    case DestinyClass.Warlock:
+      return "warlock";
+    default:
+      return "unknown";
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Main entry: loadOwnedCosmetics (with wishlist)
+// Main entry: loadOwnedCosmetics (Option D-Plus)
 // ---------------------------------------------------------------------------
 
 export async function loadOwnedCosmetics(
@@ -223,10 +402,10 @@ export async function loadOwnedCosmetics(
   // 1) Manifest slice (inventory items + collectibles + plugsets)
   const manifest = await loadManifestSlice(accessToken);
 
-  // 2) Ornament -> base armor mapping (used for both universal + specific)
+  // 2) Ornament -> base armor mapping (used for armor-specific ornaments)
   const ornamentToArmorMap = buildOrnamentToArmorMap(manifest);
 
-  // 3) Profile with Collectibles component
+  // 3) Profile with Collectibles + character data
   const profile = await fetchProfileWithCosmetics({
     accessToken,
     membershipType,
@@ -260,6 +439,62 @@ export async function loadOwnedCosmetics(
     unknown: [],
   };
 
+  const ownedArmorByClass: OwnedArmorByClass = {
+    hunter: [],
+    titan: [],
+    warlock: [],
+    unknown: [],
+  };
+
+  const ownedExoticArmor: OwnedExoticArmor[] = [];
+
+  // Indexes for per-slot ornament availability:
+  // universalByClassAndSlot[classType][slot] = itemHashes[]
+  const universalByClassAndSlot: Record<
+    DestinyClass,
+    Record<ArmorSlot, number[]>
+  > = {
+    // @ts-expect-error IsolatedModules
+    [DestinyClass.Titan]: {
+      helmet: [],
+      gauntlets: [],
+      chest: [],
+      legs: [],
+      classItem: [],
+      unknown: [],
+    },
+    // @ts-expect-error IsolatedModules
+    [DestinyClass.Hunter]: {
+      helmet: [],
+      gauntlets: [],
+      chest: [],
+      legs: [],
+      classItem: [],
+      unknown: [],
+    },
+    // @ts-expect-error IsolatedModules
+    [DestinyClass.Warlock]: {
+      helmet: [],
+      gauntlets: [],
+      chest: [],
+      legs: [],
+      classItem: [],
+      unknown: [],
+    },
+    // @ts-expect-error IsolatedModules
+    [DestinyClass.Unknown]: {
+      helmet: [],
+      gauntlets: [],
+      chest: [],
+      legs: [],
+      classItem: [],
+      unknown: [],
+    },
+  };
+
+  // armorSpecificByBaseArmorHash[baseArmorHash] = ornament itemHashes[]
+  const armorSpecificByBaseArmorHash = new Map<number, number[]>();
+
   // 6) Walk collectibles and classify
   for (const [collectibleHash, state] of stateByCollectible.entries()) {
     const collectibleDef = manifest.collectiblesByHash.get(collectibleHash);
@@ -271,7 +506,38 @@ export async function loadOwnedCosmetics(
 
     const acquired = isCollectibleAcquired(state);
 
-    // (a) Shaders (only care about owned)
+    // (a) Exotic / Legendary armor in Collections
+    if (acquired && isArmorDef(itemDef)) {
+      const tierType = itemDef.inventory?.tierType ?? 0;
+      // 5 = Legendary, 6 = Exotic
+      if (tierType >= 5) {
+        const classType: DestinyClass =
+          typeof itemDef.classType === "number"
+            ? itemDef.classType
+            : // @ts-expect-error IsolatedModules
+              DestinyClass.Unknown;
+        const slot = getArmorSlotFromName(itemDef);
+        const key = classKey(classType);
+
+        const armorEntry: OwnedArmorItem = {
+          itemHash,
+          collectibleHash,
+          name: itemDef.displayProperties?.name ?? "Unknown Armor",
+          icon: itemDef.displayProperties?.icon ?? "",
+          classType,
+          slot,
+          tierType,
+          isExotic: tierType === 6,
+        };
+
+        ownedArmorByClass[key].push(armorEntry);
+        if (armorEntry.isExotic) {
+          ownedExoticArmor.push(armorEntry);
+        }
+      }
+    }
+
+    // (b) Shaders (only care about owned)
     if (isShaderDef(itemDef)) {
       if (!acquired) continue;
 
@@ -284,7 +550,7 @@ export async function loadOwnedCosmetics(
       continue;
     }
 
-    // (b) Armor ornaments (universal and armor-specific)
+    // (c) Armor ornaments (universal and armor-specific)
     if (!isArmorOrnamentDef(itemDef)) continue;
 
     const classType: DestinyClass =
@@ -292,6 +558,8 @@ export async function loadOwnedCosmetics(
         ? itemDef.classType
         : // @ts-expect-error IsolatedModules
           DestinyClass.Unknown;
+
+    const slot = getArmorSlotFromName(itemDef);
 
     const baseArmorHashes =
       ornamentToArmorMap.get(itemHash) ?? new Set<number>();
@@ -309,35 +577,101 @@ export async function loadOwnedCosmetics(
       icon: itemDef.displayProperties?.icon ?? "",
       classType,
       isUniversal,
+      slot,
       appliesToItemHashes,
       appliesToItemNames,
     };
 
-    const bucket =
-      // @ts-expect-error IsolatedModules
-      classType === DestinyClass.Hunter
-        ? "hunter"
-        : // @ts-expect-error IsolatedModules
-        classType === DestinyClass.Titan
-        ? "titan"
-        : // @ts-expect-error IsolatedModules
-        classType === DestinyClass.Warlock
-        ? "warlock"
-        : "unknown";
+    const key = classKey(classType);
 
     if (isUniversal) {
-      // Universal ornaments: split into owned vs wishlist
+      // Index for per-slot availability
+      // Unknown classType ornaments we treat as available to all classes
+      const targetClasses: DestinyClass[] =
+        // @ts-expect-error IsolatedModules
+        classType === DestinyClass.Unknown
+          ? // @ts-expect-error IsolatedModules
+            [DestinyClass.Hunter, DestinyClass.Titan, DestinyClass.Warlock]
+          : [classType];
+
+      for (const ct of targetClasses) {
+        universalByClassAndSlot[ct][slot].push(itemHash);
+      }
+
+      // Owned vs wishlist
       if (acquired) {
-        universalOrnamentsByClass[bucket].push(ornamentEntry);
+        universalOrnamentsByClass[key].push(ornamentEntry);
       } else {
-        wishlistUniversalOrnamentsByClass[bucket].push(ornamentEntry);
+        wishlistUniversalOrnamentsByClass[key].push(ornamentEntry);
       }
     } else {
-      // Armor-specific ornaments: only return owned ones (wishlist here is less useful)
+      // Armor-specific ornaments: only return owned ones
       if (acquired) {
-        armorSpecificOrnamentsByClass[bucket].push(ornamentEntry);
+        armorSpecificOrnamentsByClass[key].push(ornamentEntry);
+
+        // Build base armor -> ornament mapping for per-slot availability
+        for (const armorHash of appliesToItemHashes) {
+          const list = armorSpecificByBaseArmorHash.get(armorHash) ?? [];
+          list.push(itemHash);
+          armorSpecificByBaseArmorHash.set(armorHash, list);
+        }
       }
     }
+  }
+
+  // 7) Build per-character armor drip (equipped armor + per-slot ornament availability)
+  const characterArmorDrip: CharacterArmorDrip[] = [];
+  const characterEquipment = profile.characterEquipment?.data ?? {};
+  const characterData = profile.characters?.data ?? {};
+
+  for (const [characterId, charData] of Object.entries(characterData)) {
+    const classType = charData.classType as DestinyClass;
+    const equippedItems = characterEquipment[characterId]?.items ?? [];
+
+    const slotMap = new Map<ArmorSlot, CharacterArmorSlot>();
+
+    for (const item of equippedItems) {
+      const itemDef = manifest.inventoryItemsByHash.get(item.itemHash);
+      if (!itemDef) continue;
+      if (!isArmorDef(itemDef)) continue;
+
+      const slot = getArmorSlotFromName(itemDef);
+      if (slot === "unknown") continue;
+
+      const tierType = itemDef.inventory?.tierType ?? 0;
+      const isExotic = tierType === 6;
+
+      const baseSlot: CharacterArmorSlot = {
+        slot,
+        baseItemHash: item.itemHash,
+        baseItemName: itemDef.displayProperties?.name ?? "Unknown Armor",
+        icon: itemDef.displayProperties?.icon ?? "",
+        classType,
+        tierType,
+        isExotic,
+        availableUniversalOrnaments: [],
+        availableArmorSpecificOrnaments: [],
+      };
+
+      slotMap.set(slot, baseSlot);
+    }
+
+    // Now attach ornament availability per slot
+    for (const [slot, entry] of slotMap.entries()) {
+      // Universal: from classType + slot index
+      entry.availableUniversalOrnaments =
+        universalByClassAndSlot[classType]?.[slot] ?? [];
+
+      // Armor-specific: from base armor hash mapping
+      entry.availableArmorSpecificOrnaments =
+        armorSpecificByBaseArmorHash.get(entry.baseItemHash) ?? [];
+    }
+
+    characterArmorDrip.push({
+      characterId,
+      classType,
+      armorSlots: Array.from(slotMap.values()),
+    });
   }
 
   return {
@@ -345,5 +679,8 @@ export async function loadOwnedCosmetics(
     universalOrnamentsByClass,
     wishlistUniversalOrnamentsByClass,
     armorSpecificOrnamentsByClass,
+    ownedArmorByClass,
+    ownedExoticArmor,
+    characterArmorDrip,
   };
 }
