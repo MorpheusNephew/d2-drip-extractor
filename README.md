@@ -25,7 +25,7 @@ The D2 Drip Extractor integrates with the Bungie API to fetch comprehensive cosm
 
 - **Framework**: [Next.js 16](https://nextjs.org) (App Router)
 - **Authentication**: [NextAuth.js](https://next-auth.js.org/) with Bungie OAuth
-- **API Integration**: [bungie-api-ts](https://github.com/DestinyItemManager/bungie-api-ts)
+- **API Integration**: [Bungie.net API](https://bungie-net.github.io/multi/index.html)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Language**: TypeScript
 
