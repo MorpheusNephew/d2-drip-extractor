@@ -1,4 +1,5 @@
 import { Header } from "@/components";
+import DripClient from "@/components/DripClient";
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
             be able to use AI to generate your drip.
           </p>
         </div>
+        <DripClient />
       </main>
     </div>
   );
