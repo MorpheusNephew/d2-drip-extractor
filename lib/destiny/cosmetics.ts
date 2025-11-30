@@ -222,10 +222,19 @@ function isArmorDef(item: DestinyInventoryItemDefinition): boolean {
 }
 
 /**
- * Roughly infer armor slot from type display name.
- * You can refine using bucketTypeHash if you later load BucketDefinitions.
+ * Determine armor slot using bucketTypeHash (reliable) with fallback to name matching.
  */
 function getArmorSlotFromName(item: DestinyInventoryItemDefinition): ArmorSlot {
+  // Primary: Use bucket hash (most reliable)
+  const bucketHash = item.inventory?.bucketTypeHash;
+  
+  if (bucketHash === 3448274439) return "helmet";
+  if (bucketHash === 3551918588) return "gauntlets";
+  if (bucketHash === 14239492) return "chest";
+  if (bucketHash === 20886954) return "legs";
+  if (bucketHash === 1585787867) return "classItem";
+
+  // Fallback: Use name matching
   const name = item.itemTypeDisplayName?.toLowerCase() ?? "";
 
   if (

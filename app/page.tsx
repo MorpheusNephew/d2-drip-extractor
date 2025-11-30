@@ -1,5 +1,4 @@
-import { Header } from "@/components";
-import DripClient from "@/components/DripClient";
+import { Header, DripClient } from "@/components";
 
 export default function Home() {
   return (
